@@ -4,7 +4,7 @@ const Joi = require('joi')
 const crypto = require('crypto');
 const moment = require('moment');
 const jwt = require('jsonwebtoken')
-const {sendPasswordResetEmail} = require('../services/emailService')
+const {sendEmail} = require('../services/emailService')
 
 //validation schema
 const registerSchema = Joi.object({
@@ -32,13 +32,22 @@ const registerUser = async (req,res)=>{
         //hash password
         const salt = await bcrypt.genSalt(10)
         const hashPassword = await bcrypt.hash(password,salt);
-
+        
         //create and save user
         const user = new User({name,email,password:hashPassword})
+        
+        //generate verification token
+        const verificationToken = crypto.randomBytes(32).toString('hex')
+        const verificationUrl = `http://localhost:3000/verify-email?token=${verificationToken}`;
+        user.verificationToken = verificationToken
+
         await user.save()
 
+        //send verification email
+        await sendEmail(email,'Verify your email address',`Please verify your email by clicking on the following link: ${verificationUrl}`)
+
         res.status(201).json({
-            message: 'User registered successfully',
+            message: 'User registered successfully. Please check your email to verify your account.',
             user:{
                 id: user._id,
                 name: user.name,
@@ -51,6 +60,24 @@ const registerUser = async (req,res)=>{
     }
 }
 
+//verify email
+const verifyEmail = async(req,res)=>{
+    const {token} = req.query
+    try{
+        const user = await User.findOne({verificationToken:token})
+        if(!user){
+            return res.status(400).json({message:'Invalid token'})
+        }
+
+        user.isVerified = true
+        user.verificationToken = undefined
+        await user.save()
+        res.status(200).json({ message: 'Email verified successfully!' });
+    }catch(error){
+        res.status(500).json({ message: 'Server error' });
+    }
+}
+
 //login user
 const loginUser = async(req,res)=>{
     try{
@@ -59,8 +86,13 @@ const loginUser = async(req,res)=>{
             return res.status(400).json({message:'Email and password are required'})
         }
 
+
+       
         //check if user exits
         const user = await User.findOne({email})
+       
+
+       
         if(!user){
             return res.status(400).json({message:'Invalid credentials'})
         }
@@ -70,6 +102,11 @@ const loginUser = async(req,res)=>{
         if(!isMatch){
             return res.status(400).json({message: 'Invalid credentials'})
         }
+
+        if (!user.isVerified) {
+            return res.status(403).json({ message: 'Please verify your email before logging in.' });
+        }
+
 
         //Generate JWT token
         const token = jwt.sign({id:user._id,isAdmin:user.isAdmin},process.env.JWT_SECRET,{expiresIn:'1h'})
@@ -132,8 +169,20 @@ const updateUserProfile = async(req,res)=>{
 
         const decoded = jwt.verify(token,process.env.JWT_SECRET)
         const userId = decoded.id
-
         const {name,email} = req.body
+
+        const user = await User.findById(userId).select('-password')
+
+        if(!user){
+            return res.status(400).json({ message: 'User not found' });
+        }
+
+        //check if email is changing and if the email is verified
+        if(email && email !== user.email && !user.isVerified){
+            return res.status(403).json({ message: 'Please verify your email before changing it.' });
+        }
+
+
 
         const updateUser = await User.findByIdAndUpdate(
             userId,
@@ -142,8 +191,10 @@ const updateUserProfile = async(req,res)=>{
         ).select('-password')
 
         if(!updateUser){
-            return res.status(400).json({message:'User not found'})
+            return res.status(400).json({ message: 'User update failed' });
         }
+
+
 
         res.status(200).json({
             message:'User updated successfully',
@@ -191,15 +242,22 @@ const requestResetPassword = async(req,res)=>{
             return res.status(404).json({ message: 'User not found' });
         }
 
+        if (!user.isVerified) {
+            return res.status(403).json({ message: 'Please verify your email before requesting a password reset.' });
+        }
+    
+
         //create a reset token
         const resetToken = crypto.randomBytes(20).toString('hex')
 
         //reset password token and expiry time in user record
         user.resetToken = resetToken
         user.resetTokenExpiry = moment().add(1,'hour').toDate()
+        const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`; // Update with your frontend URL
+
         await user.save()
 
-        await sendPasswordResetEmail(email,resetToken)
+        await sendEmail(email,'Password Reset', `You requested a password reset. Click the link to reset your password: ${resetUrl}`)
 
         res.status(200).json({ message: 'Reset token sent to email' });
     }
@@ -240,6 +298,7 @@ const resetPassword = async(req,res)=>{
 
 module.exports = {
     registerUser,
+    verifyEmail,
     loginUser,
     getUserProfile,
     updateUserProfile,

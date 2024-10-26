@@ -10,17 +10,18 @@ const transporter = nodemailer.createTransport({
     }
 })
 
-const sendPasswordResetEmail = (to,resetToken) => {
+const sendEmail = (to,subject,text) => {
     
-    const resetUrl = `http://localhost:5000/api/users/reset-password?token=${resetToken}`; // Update with your frontend URL
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to,
-        subject: 'Password Reset',
-        text: `You requested a password reset. Click the link to reset your password: ${resetUrl}`
+        subject,
+        text
     }
     
     return transporter.sendMail(mailOptions)
 }
 
-module.exports = { sendPasswordResetEmail }
+
+
+module.exports = { sendEmail }
