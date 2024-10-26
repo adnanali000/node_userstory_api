@@ -1,41 +1,27 @@
-This project is a comprehensive Node.js API for managing user stories, featuring user registration, authentication, profile management, and more.
+#Clone the repository
 
-Features
-User Registration & Verification
-User Authentication with JWT
-Profile Management
-Password Reset Functionality
-Email Notifications
+- git clone https://github.com/adnanali000/node_userstory_api
+- cd node_userstory_api
 
-Getting Started
-Prerequisites
-Node.js (v14 or higher)
-MongoDB (running instance)
-Git
+#Install dependencies
 
-Installation
-npm install
+-npm install
 
-Set up environment variables:
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-EMAIL_USER=your_email@example.com
-EMAIL_PASS=your_email_password
+#Set up environment variables
 
-Start project
-npm start
+- PORT=5000
+- MONGODB_URI=your_mongodb_connection_string
+- JWT_SECRET=your_jwt_secret
+- EMAIL_USER=your_email@example.com
+- EMAIL_PASS=your_email_password
 
-API Endpoints
-POST /api/users/register - Register a new user
-POST /api/users/login - Log in a user
-GET /api/users/profile - Get user profile (requires authentication)
-PUT /api/users/profile - Update user profile (requires authentication)
-DELETE /api/users/profile - Delete user account (requires authentication)
-POST /api/users/forget-password - Request a password reset
-POST /api/users/reset-password - Reset user password
-GET /api/users/verify-email - Verify user email
+  #Run the application
 
-Testing
-You can use tools like Postman or Insomnia to test the API endpoints.
+  -npm start
+
+
+
+
+
+
 
