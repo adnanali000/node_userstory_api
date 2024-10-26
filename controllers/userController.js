@@ -1,7 +1,10 @@
 const User = require('../models/User')
 const bcrypt = require('bcryptjs')
 const Joi = require('joi')
+const crypto = require('crypto');
+const moment = require('moment');
 const jwt = require('jsonwebtoken')
+const {sendPasswordResetEmail} = require('../services/emailService')
 
 //validation schema
 const registerSchema = Joi.object({
@@ -179,4 +182,39 @@ const deleteUser = async(req,res)=>{
     }
 }
 
-module.exports = {registerUser,loginUser,getUserProfile,updateUserProfile,deleteUser}
+//reset password request
+const requestResetPassword = async(req,res)=>{
+    try{
+        const {email} = req.body
+        const user = await User.findOne({email})
+        if(!user){
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        //create a reset token
+        const resetToken = crypto.randomBytes(20).toString('hex')
+
+        //reset password token and expiry time in user record
+        user.resetToken = resetToken
+        user.resetTokenExpiry = moment().add(1,'hour').toDate()
+        await user.save()
+
+        await sendPasswordResetEmail(email,resetToken)
+
+        res.status(200).json({ message: 'Reset token sent to email' });
+    }
+    catch(error){
+        console.log(error.message)
+        res.status(500).json({ message: 'Server error' });
+    }
+}
+
+module.exports = {
+    registerUser,
+    loginUser,
+    getUserProfile,
+    updateUserProfile,
+    deleteUser,
+    requestResetPassword
+
+}
