@@ -86,4 +86,37 @@ const loginUser = async(req,res)=>{
     }
 }
 
-module.exports = {registerUser,loginUser}
+//get user profile
+const getUserProfile = async(req,res)=>{
+    try{
+        //get user id from jwt token
+        const token = req.headers.authorization && req.headers.authorization.split(' ')[1]
+        if(!token){
+            return res.status(401).json({message: 'No token provided'})
+        }
+
+        const decoded = jwt.verify(token,process.env.JWT_SECRET)
+        const userId = decoded.id
+
+        //find user by id & exclude password from it
+        const user = await User.findById(userId).select('-password');
+        if(!user){
+            return res.status(400).json({message:'User not found'})
+        }
+
+        res.status(200).json({
+            message:'User profile retrieved successfully',
+            user:{
+                id:user._id,
+                name:user.name,
+                email:user.email
+            }
+        })
+
+    }catch(error){
+        res.status(500).json({message:'Server error'})
+
+    }
+}
+
+module.exports = {registerUser,loginUser,getUserProfile}
