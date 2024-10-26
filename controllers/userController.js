@@ -13,7 +13,7 @@ const registerUser = async (req,res)=>{
     try{
         const {error} = registerSchema.validate(req.body)
         if(error){
-            res.status(400).json({message:error.details[0].message})
+          return res.status(400).json({message:error.details[0].message})
         }
 
         const {name,email,password} = req.body
